@@ -2,8 +2,8 @@
 
 This is a toy project for learning shapeless and fastparse.
 
-S-expressions can be used instead of JSON as serialization format,
-but keep in mind that this was created purely for fun and learning and one should never use S-expressions in production.
+S-expressions can be used as a serialization format (instead of JSON, for example),
+but keep in mind that this was created purely for fun and learning. One should never use S-expressions in production for anything.
 
 sexp4s provides:
 - methods for parsing string input to AST and pretty printing ASTs
