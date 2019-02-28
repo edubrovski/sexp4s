@@ -14,33 +14,51 @@ object EncoderInstances {
 
   implicit val booleanEncoder: Encoder[Boolean] = Encoder.fromToString
 
-  implicit val stringEncoder: Encoder[String] = Encoder.make(s => SExpString(StringEscapeUtils.escapeJava(s)))
+  implicit val stringEncoder: Encoder[String] = s => SExpString(StringEscapeUtils.escapeJava(s))
 
-  implicit def collectionEncoder[A : Encoder, C[X] <: TraversableOnce[X]]: Encoder.Aux[C[A], SExpList] = Encoder.make { elems =>
+  implicit def collectionEncoder[A : Encoder, C[X] <: TraversableOnce[X]]: ListEncoder[C[A]] = { elems =>
     val encodedElems = elems.toVector.map(encode(_))
     SExpList(encodedElems)
   }
 
-  implicit val hnilEncoder: Encoder.Aux[HNil, SExpList] = Encoder.make(_ => SExpList())
+  implicit val hnilEncoder: ListEncoder[HNil] = _ => SExpList()
 
   implicit def hlistObjectEncoder[K <: Symbol, H, T <: HList](implicit
     witness: Witness.Aux[K],
     hEncoder: Lazy[Encoder[H]],
-    tEncoder: Encoder.Aux[T, SExpList]
-  ): Encoder.Aux[FieldType[K, H] :: T, SExpList] = {
+    tEncoder: ListEncoder[T]
+  ): ListEncoder[FieldType[K, H] :: T] = {
     val fieldName = witness.value.name
-    Encoder.make { hlist =>
-      val head = hEncoder.value.encode(hlist.head)
+    ListEncoder.make { hlist =>
+      val headValue = hEncoder.value.encode(hlist.head)
       val SExpList(tail) = tEncoder.encode(hlist.tail)
-      SExpList(SExpList(SExpString(fieldName), head) +: tail)
+      val head = SExpList(SExpString(fieldName), headValue)
+      SExpList(head +: tail)
     }
   }
 
   implicit def genericObjectEncoder[A, Repr](implicit
     generic: LabelledGeneric.Aux[A, Repr],
-    reprEncoder: Lazy[Encoder.Aux[Repr, SExpList]]
-  ): Encoder.Aux[A, SExpList] = Encoder.make { a =>
+    reprEncoder: Lazy[ListEncoder[Repr]]
+  ): ListEncoder[A] = ListEncoder.make { a =>
     reprEncoder.value.encode(generic.to(a))
+  }
+
+  implicit val cnilEncoder: ListEncoder[CNil] = _.impossible
+
+  implicit def coproductObjectEncoder[K <: Symbol, H, T <: Coproduct](implicit
+    witness: Witness.Aux[K],
+    hEncoder: Lazy[Encoder[H]],
+    tEncoder: ListEncoder[T]
+  ): ListEncoder[FieldType[K, H] :+: T] = {
+    val fieldName = witness.value.name
+    ListEncoder.make {
+      case Inl(head) =>
+        val fieldValue = hEncoder.value.encode(head)
+        SExpList(SExpString(fieldName), fieldValue)
+      case Inr(tail) =>
+        tEncoder.encode(tail)
+    }
   }
 }
 

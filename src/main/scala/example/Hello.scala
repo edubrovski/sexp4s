@@ -1,6 +1,7 @@
 package example
 
 import cats.implicits._
+import shapeless.LabelledGeneric
 import shapeless.labelled.{FieldType, KeyTag}
 
 import scala.collection.generic.CanBuildFrom
@@ -11,35 +12,46 @@ object Hello extends App {
   import EncoderInstances._
   import DecoderInstances._
 
-  case class Address(city: String, street: String)
+  sealed trait Tree[+A]
 
-  case class Person(firstName: String, lastName: String, address: Address)
+  case object Leaf extends Tree[Nothing]
 
-  import shapeless._
+  case class Branch[A](value: A, left: Tree[A], right: Tree[A]) extends Tree[A]
 
-  val sexp = parse(
-    """
-      |(
-      |("firstName" "Eduard")
-      |("lastName" "Dubrovskiy")
+  sealed trait Address
+
+  case class Address1(street: String) extends Address
+
+  case class Address2(city: String, street: String) extends Address
+
+  case class C()
+
+  case class Person(firstName: String, lastName: String, c: C, address: Address)
+
+  val input =
+    """(
+      |( "firstName" "Eduard")
+      |( "lastName" "Dubrovskiy")
+      |("c" ())
+      |("address" ("Address2" (
+      | ("city" "Moscow")
+      | ("street" "Milashenkova")
+      |)))
       |)
-    """.stripMargin).get.value
+    """.stripMargin
 
-  val person = decode[Person](sexp)
+//    """
+//      |(
+//      | ("firstName" "Eduard")
+//      | ("lastName" "Dubrovskiy")
+//      |)
+//    """.stripMargin
 
-  println(person)
+  val sexp = parse(input).get.value
 
-//  val p1 = Person("Eduard", "Dubrovskiy")
-//  val p2 = Person("Martin", "Odersky")
-//
-//
-//
-//  val sexp = encode(List(p1, p2))
-//
-//  val str = sexp.prettyPrint()
-//
-//  val parsed = parse(str).get.value
-//
-//  println(parsed.show)
+  val decoded = decode[Person](sexp)
+
+  println(decoded)
+
 }
 

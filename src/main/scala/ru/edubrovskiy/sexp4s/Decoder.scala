@@ -18,8 +18,6 @@ object Decoder {
 
   def make[A](f: SExp => DecodingResult[A]): Decoder[A] = (sExp: SExp) => f(sExp)
 
-  def failed[A](error: DecodingFailure): DecodingResult[A] = Left(error)
-
   implicit object MonadInstance extends Monad[Decoder] {
 
     override def flatMap[A, B](fa: Decoder[A])(f: A => Decoder[B]): Decoder[B] = Decoder.make { sExp =>
